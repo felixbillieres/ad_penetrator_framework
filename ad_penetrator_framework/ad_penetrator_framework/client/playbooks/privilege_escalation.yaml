@@ -1,0 +1,4 @@
+# playbooks/privilege_escalation.yaml
+# Exemple de playbook YAML pour la phase d'élévation de privilèges.
+# Chaîne des modules de découverte de vulnérabilités et propose des exploitations.
+# Met en évidence l'interactivité pour l'opérateur.

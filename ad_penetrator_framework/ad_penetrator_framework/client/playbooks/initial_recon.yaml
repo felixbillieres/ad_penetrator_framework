@@ -1,0 +1,4 @@
+# playbooks/initial_recon.yaml
+# Exemple de playbook YAML pour une phase de reconnaissance initiale.
+# Définit une séquence d'exécution de modules d'énumération sur les agents.
+# Peut inclure des conditions et des options d'interactivité.
