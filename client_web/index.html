@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>AD Penetrator - Web Interface</title>
+    <!-- Bibliothèques externes -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/cytoscape@3.23.0/dist/cytoscape.min.js"></script>
+    
+    <!-- Styles locaux -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="root">
+        <p style="text-align: center; padding: 50px; font-size: 1.2em;">Chargement de l'application...</p>
+    </div>
+
+    <!-- Scripts de l'application (l'ordre est important) -->
+    <script type="text/babel" src="js/config.js" defer></script>
+    
+    <!-- Composants : doivent être chargés avant app.js car app.js les utilise -->
+    <script type="text/babel" src="js/components/Header.js" defer></script>
+    <script type="text/babel" src="js/components/Footer.js" defer></script>
+    <script type="text/babel" src="js/components/DashboardView.js" defer></script>
+    <script type="text/babel" src="js/components/AgentsListView.js" defer></script>
+    <script type="text/babel" src="js/components/AdGraphView/GraphInfoPanel.js" defer></script> 
+    <script type="text/babel" src="js/components/AdGraphView.js" defer></script>
+    
+    <!-- Fichier principal de l'application -->
+    <script type="text/babel" src="js/app.js" defer></script>
+</body>
+</html> 

@@ -1,0 +1,88 @@
+Prompt 1 : Initialisation du Contexte Général du Projet (Utilisation initiale)
+Votre rôle : Vous êtes une IA d'assistance au développement et à la stratégie de projet, spécialisée dans la cybersécurité offensive et l'ingénierie logicielle.
+
+Contexte du Projet :
+Je suis en train de concevoir et de développer un framework avancé d'audit et d'exploitation pour Active Directory, que j'appelle le "AD Penetrator Framework". Ce n'est pas un simple script, mais un écosystème complexe basé sur une architecture Client-Serveur-Agent (C2).
+
+Objectifs principaux :
+
+Modularité et Scalabilité : Permettre l'ajout facile de nouvelles techniques d'énumération, de découverte de vulnérabilités et d'exploitation d'Active Directory.
+Interactivité et Réactivité : L'opérateur doit pouvoir guider le framework, valider des actions critiques, et le framework doit pouvoir réagir intelligemment aux découvertes.
+Furtivité : Les agents déployés sur les cibles doivent être aussi discrets que possible, avec des communications variées et des techniques d'évasion.
+Base de Connaissances : Collecter et stocker toutes les données d'Active Directory découvertes pour des analyses approfondies et éviter la ré-énumération.
+Orchestration des Attaques : Permettre de définir des "playbooks" (séquences d'opérations) pour automatiser des chaînes d'attaques complexes.
+Architecture Technique (rapide aperçu) :
+
+Client (Operator Console) : Mon PC local, une interface CLI interactive pour contrôler le framework.
+Serveur (C2 Server) : Peut être sur mon PC ou un VPS, gère la DB, les agents, les tâches. C'est le cerveau central.
+Agent(s) (Target Host) : Scripts ou exécutables déployés sur les machines compromises dans l'AD, exécutent les modules.
+Ma demande initiale :
+Pourriez-vous me confirmer que vous comprenez bien ce contexte ? Ensuite, j'aimerais que vous me posiez des questions pertinentes sur les détails que je pourrais avoir omis, ou que vous me suggériez des points de vigilance pour un tel projet.
+
+Prompt 2 : Explication des Fonctionnalités Détaillées (Après initialisation)
+Contexte : Nous avons déjà établi le contexte général du projet "AD Penetrator Framework". Maintenant, je souhaite vous détailler les fonctionnalités clés et les types de techniques que ce framework est censé implémenter. J'aimerais que vous intégriez cette information dans votre compréhension du projet et que vous soyez prêt(e) à discuter de chaque point.
+
+Fonctionnalités et Techniques Ciblées :
+
+Énumération Avancée d'Active Directory :
+
+Classique : Utilisateurs, groupes, ordinateurs, GPOs, trusts.
+Avancée : Attributs moins connus (UAC, SPN, LAPS), analyse détaillée des ACLs (DACLs/SACLs), énumération des CA et templates ADCS, DNS intégré à l'AD.
+Détection et Abus des Misconfigurations AD :
+
+Identification des délégations (contraintes/non contraintes) mal configurées.
+Détection des permissions excessives sur des objets critiques (Domaine, AdminSDHolder).
+Analyse des GPOs pour des faiblesses.
+Détection des vulnérabilités ADCS (ESC1-ESC8).
+Attaques et Exploitations Avancées :
+
+Kerberos : Kerberoasting, AS-REP Roasting, Silver/Golden Ticket, S4U2P/S4U2Self abuse.
+LDAP : Exploitation de Shadow Credentials (ESC8+), modification d'attributs sensibles.
+Protocol Abuse : SMB, WMI, RPC, DCOM pour exécution à distance.
+DCSync : Acquisition de NTLM hashes depuis les contrôleurs de domaine.
+Abus de Trusts AD :
+
+Analyse des trusts et de leur configuration (direction, SID Filtering).
+Exploitation des délégations inter-domaines.
+Forger des tickets Kerberos à travers les trusts.
+Command and Control (C2) Operations :
+
+Multiples canaux de communication (HTTP/S, DNS, SMB).
+Jitter et Sleep pour la furtivité.
+Chargement dynamique de modules sur l'agent.
+Windows Evasion :
+
+Obfuscation de code de l'agent.
+Packaging furtif (fileless, exécutables légers).
+Bypass AMSI, UAC, AppLocker.
+Anti-forensics / Anti-analysis (détection VM/debuggers).
+Pivoting & Lateral Movement :
+
+Pass-the-Hash (PtH), Pass-the-Ticket (PtT).
+Exécution à distance (WMI, PsExec-like, WinRM, DCOM).
+Déploiement de nouveaux agents sur des hôtes compromis.
+Advanced Post-exploitation Tactics :
+
+Mécanismes de persistance (comptes, services, tâches planifiées).
+Data Exfiltration (NTDS.dit, SAM, registry hives).
+Nettoyage des traces.
+Élévation de privilèges locale sur l'agent.
+Ma demande :
+Confirmez-vous que vous avez bien enregistré l'étendue de ces fonctionnalités ? Comment ces capacités s'intègrent-elles dans l'architecture Client-Serveur-Agent que nous avons discutée ? Quels défis techniques anticipez-vous pour certaines de ces catégories de techniques ?
+
+Prompt 3 : Remise en Contexte (Utilisation à chaque nouvelle session ou relance)
+Votre rôle : Vous êtes toujours mon assistant IA de développement et de stratégie pour le projet "AD Penetrator Framework".
+
+Rappel du Contexte :
+Je suis en train de développer un framework avancé d'audit et d'exploitation pour Active Directory. Il s'agit d'une architecture Client-Serveur-Agent (C2) avec un focus sur la modularité, la scalabilité, l'interactivité, la furtivité et une base de connaissances centralisée. Nous avons déjà discuté en détail des fonctionnalités d'énumération, d'exploitation, de C2, d'évasion, de mouvement latéral et de post-exploitation.
+
+Ma demande :
+Je reprends le travail sur ce projet. Pourriez-vous me rafraîchir la mémoire sur les objectifs globaux du projet et sur l'architecture principale (Client, Serveur, Agent) en quelques phrases clés ? Ensuite, demandez-moi sur quelle partie du projet je souhaite me concentrer aujourd'hui ou quel est mon objectif actuel.
+
+Prompt 4 : Remise en Contexte (Variante plus courte si vous êtes en mode développement rapide)
+Votre rôle : Vous êtes mon assistant IA pour le développement du "AD Penetrator Framework".
+
+Rappel Rapide : Projet de framework AD C2 (Client-Serveur-Agent) pour l'énumération, l'exploitation et la post-exploitation, axé sur la modularité, la furtivité et l'interactivité. Toutes les fonctionnalités détaillées (énumération avancée, ADCS, trusts, evasion, PtH, etc.) ont déjà été passées en revue.
+
+Ma demande :
+Je suis de retour sur le projet. Quel était notre dernier point de discussion ou où en étions-nous dans la feuille de route ? Que puis-je faire pour vous aujourd'hui concernant le "AD Penetrator Framework" ?

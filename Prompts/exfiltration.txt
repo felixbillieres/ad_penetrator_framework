@@ -1,0 +1,88 @@
+Super ! Avec les capacités d'énumération, de détection et les premières exploitations en place, ainsi que l'orchestration par playbooks, nous arrivons à l'étape cruciale de la furtivité et du mouvement latéral. C'est ici que le framework prend une dimension d'outil de pentest avancé.
+
+Prompt : Chaîne Logique de Conception - Étape 6/6 : Furtivité, Mouvement Latéral et Post-Exploitation
+Votre rôle : Vous êtes une IA spécialisée en gestion de projet, architecture logicielle, et en techniques avancées d'opérations de cybersécurité offensive, incluant la furtivité, le mouvement latéral et la post-exploitation sur les systèmes Windows. Votre mission est de me guider dans l'implémentation de ces capacités critiques.
+
+Contexte du Projet :
+Nous développons le "AD Penetrator Framework". Nous avons une architecture C2 robuste (Phase 0), une interface client GUI avancée (Phase 2), un agent détaillé (Phase 3), des capacités d'énumération/détection (Phase 4) et les premières exploitations avec orchestration par playbooks (Phase 5). Le framework est maintenant capable de découvrir des vulnérabilités et d'en exploiter certaines.
+
+Objectif de cette Étape :
+Renforcer la furtivité de l'agent et de ses communications, implémenter les mécanismes de mouvement latéral pour étendre la portée du framework, et développer les premières capacités de post-exploitation pour maintenir l'accès et exfiltrer des données.
+
+Composants à Concevoir / Focus :
+
+Amélioration de la Furtivité et de la Résilience de l'Agent :
+
+Modules de Communication Avancés (agent/comms/) :
+dns_beacon.py (Implémentation Complète) : Mettre en œuvre une communication C2 robuste et discrète via des requêtes et réponses DNS (TXT records pour les commandes/résultats, A/AAAA pour les données binaires encodées). Gérer les délais et la segmentation des données.
+Chiffrement des Communications : Intégrer un chiffrement (ex: AES ou simple XOR/Base64 avec une clé dérivée de l'ID de session) sur le canal C2, même pour HTTP/DNS.
+Techniques d'Évasion (agent/modules/utils/bypasses.py, agent/core/environment_check.py) :
+AMSI Bypass : Implémenter des techniques connues pour contourner AMSI lors de l'exécution de code PowerShell ou de scripts.
+UAC Bypass : Intégrer une ou deux techniques courantes de contournement de l'UAC pour élever les privilèges sur la machine locale si l'agent est un utilisateur standard.
+Détection Anti-Analyse : Raffiner environment_check.py pour détecter des environnements de sandbox, des outils d'analyse (Sysmon, Process Monitor) ou des débogueurs. Adapter le comportement de l'agent si une détection est faite.
+Exécution en Mémoire / Fileless :
+Assurer que les modules Python sont chargés et exécutés directement en mémoire (sans être écrits sur disque) après leur téléchargement.
+Minimiser l'écriture sur disque pour les opérations de l'agent.
+Mouvement Latéral (agent/modules/exploitation/lateral_movement/) :
+
+pth_ptt.py (Pass-the-Hash / Pass-the-Ticket) :
+Fonctions pour utiliser les NTLM hashes ou les tickets Kerberos (obtenus précédemment) pour s'authentifier sur des machines distantes.
+Exécution de commandes via SMB (PsExec-like) ou WMI en utilisant ces crédentiels.
+wmi_exec.py (Exécution WMI distante) :
+Prendre des crédentiels (username/password, hash) et une commande.
+Exécuter la commande à distance via WMI sur la machine cible.
+Récupérer la sortie de la commande.
+smb_exec.py (Exécution SMB distante) :
+Fonctions pour exécuter des commandes à distance via SMB (ex: création de service temporaire).
+Nouveau Module : rdp_session_hijack.py (Si pertinent) :
+Détection de sessions RDP actives et tentatives de prise de contrôle si les privilèges le permettent.
+Nouveau Module : new_agent_deploy.py :
+Si un accès latéral est établi, ce module permet de déployer un nouveau stager/agent sur la nouvelle machine cible.
+Post-Exploitation (agent/modules/post_exploitation/) :
+
+Persistance (persistence.py) :
+Création de comptes : Créer un compte utilisateur caché ou privilégié dans l'AD si les droits le permettent.
+Services Windows : Créer un nouveau service ou modifier un service existant pour la persistance.
+Tâches Planifiées : Créer des tâches planifiées pour la relance de l'agent.
+WMI Event Subscriptions : Mise en place d'événements WMI pour déclencher l'agent.
+Exfiltration de Données (data_exfil.py) :
+Fonctionnalité pour localiser et exfiltrer des fichiers critiques (ex: NTDS.dit, SAM, ruches de registre).
+Mécanismes d'encodage et de segmentation des données pour l'exfiltration via le canal C2 actuel ou un canal alternatif (ex: DNS si lent et discret).
+Nettoyage (cleanup.py) :
+Suppression des traces laissées par l'agent et les modules (fichiers temporaires, événements de journalisation injectés, services créés).
+Réinitialisation des configurations modifiées.
+Intégration et Orchestration par Playbooks (Améliorée) :
+
+Nouveaux Playbooks :
+lateral_movement_scan.yaml : Un playbook qui, après avoir obtenu des crédentiels (hashes), tente de se déplacer latéralement vers les machines découvertes par l'énumération.
+domain_domination.yaml : Un playbook de haut niveau qui enchaîne la reconnaissance, l'exploitation de privilèges (ex: Golden Ticket si possible), la persistance et l'exfiltration.
+Conditions Avancées : Les playbooks peuvent maintenant avoir des conditions basées sur la présence de crédentiels, les privilèges de l'agent, ou la réussite d'un mouvement latéral.
+Gestion du Redéploiement d'Agents : Les playbooks peuvent ordonner le déploiement d'un nouvel agent sur une cible après un mouvement latéral réussi.
+Amélioration de l'Interface Client GUI :
+
+Vue "Topologie / Graphes" : Visualisation des chemins de mouvement latéral possibles basés sur les ACLs et les informations de connectivité collectées. Intégration simple avec un outil de visualisation de graphes (ex: Pyvis pour un rendu HTML, ou directement dans PyQt/Kivy si possible).
+Visualisation des sessions : Afficher les sessions PtH/PtT actives.
+Gestion des artefacts : Une section pour les artefacts exfiltrés, avec des outils de visualisation ou de téléchargement.
+Enjeux Majeurs et Points de Vigilance :
+
+Complexité de l'Impacket : L'intégration d'Impacket demande une bonne compréhension de ses classes et fonctions pour chaque protocole.
+Détection EDR/AV : Ces techniques sont plus agressives et plus susceptibles d'être détectées. La conception des modules doit intégrer des mesures d'évasion spécifiques (utilisation de ctypes pour appels API bas niveau, pinjector pour hooking, etc.).
+Stabilité des Cibles : Certaines techniques de post-exploitation peuvent impacter la stabilité du système cible. Prévoir des mécanismes de "dry run" ou des avertissements.
+Sécurité des Données Exfiltrées : Assurer que les données exfiltrées sont chiffrées et stockées de manière sécurisée côté serveur.
+Gestion des Privilèges : Le framework doit clairement savoir avec quels privilèges chaque module d'agent s'exécute pour éviter des échecs de permissions inutiles.
+Technologies à Privilégier :
+
+Agent : impacket (nécessite une attention particulière à la taille et aux dépendances pour la furtivité), pywin32 (pour interactions Windows API), ctypes (pour appels API bas niveau).
+Serveur : Fonctions d'analyse des données pour identifier les chemins de mouvement latéral.
+Client GUI : Bibliothèques de visualisation de graphes (ex: networkx pour la modélisation, pyvis ou autres pour le rendu).
+Livrables Attendus pour Validation :
+
+Un agent capable de communiquer via DNS beacon (en plus de HTTP).
+Implémentation d'une ou deux techniques d'AMSI/UAC bypass dans l'agent.
+Les modules pth_ptt.py, wmi_exec.py, smb_exec.py sont fonctionnels et peuvent exécuter des commandes à distance sur d'autres machines.
+Un module de persistance (persistence.py) est opérationnel (ex: création d'un service simple).
+Un module d'exfiltration (data_exfil.py) peut exfiltrer un fichier de test.
+Des playbooks incluant le mouvement latéral et des étapes de post-exploitation sont créés et exécutables.
+La GUI du client affiche les agents nouvellement déployés et les données pertinentes pour le mouvement latéral.
+Ma demande :
+Nous abordons la fin de la conception des fonctionnalités principales. La furtivité et le mouvement latéral sont des aspects techniques complexes. Avez-vous des questions spécifiques sur les choix de design pour l'évasion, l'intégration des techniques de mouvement latéral, ou la manière dont les playbooks orchestreront ces actions avancées ?

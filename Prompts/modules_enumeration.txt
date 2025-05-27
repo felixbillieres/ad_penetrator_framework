@@ -1,0 +1,67 @@
+Prompt : Chaîne Logique de Conception - Étape 4/6 : Implémentation des Modules d'Énumération et de Détection des Misconfigurations
+Votre rôle : Vous êtes une IA spécialisée en gestion de projet, architecture logicielle et, plus spécifiquement, en techniques de reconnaissance et de détection de vulnérabilités dans les environnements Active Directory. Votre mission est de me guider dans l'implémentation des premiers modules d'énumération et de détection côté agent, et dans la manière dont leurs résultats seront gérés par le serveur et affichés par le client.
+
+Contexte du Projet :
+Nous développons le "AD Penetrator Framework". Nous avons une architecture C2 fonctionnelle avec un agent détaillé. Nous avons déjà conçu les fondations du C2 (Phase 0), l'interface graphique du client (Phase 2) et l'architecture de l'agent (Phase 3). L'agent est maintenant capable de communiquer avec le serveur et d'exécuter des modules dynamiquement.
+
+Objectif de cette Étape :
+Développer les modules d'énumération essentiels pour l'agent, permettre au serveur de stocker et de normaliser ces données, et au client de les visualiser. Parallèlement, commencer à intégrer les modules de détection de misconfigurations qui analyseront ces données pour identifier les premières faiblesses.
+
+Composants à Concevoir / Focus :
+
+Refonte du Client AD de l'Agent (agent/modules/ad/) :
+
+ldap_client.py : Implémenter les fonctions clés pour interroger l'AD via LDAP. Cela inclut :
+Authentification (username/password, ou NTLM hash, ou ticket Kerberos - commencer par username/password).
+Recherche d'objets (search_users, search_groups, search_computers, search_gpos, search_trusts).
+Récupération d'attributs spécifiques pour chaque type d'objet.
+Gestion de la pagination pour de grandes quantités de données.
+impacket_wrapper.py (si nécessaire) : Intégrer les fonctions d'Impacket pour des protocoles non-LDAP nécessaires à l'énumération (ex: netbios pour noms d'hôtes, smb pour partages).
+Développement des Modules d'Énumération (agent/modules/enumeration/) :
+
+users_groups.py : Énumérer les utilisateurs et les groupes, en collectant des attributs pertinents (sAMAccountName, distinguishedName, enabled, description, memberOf, primaryGroup, SPN, UAC, lastLogon, adminCount, pwdLastSet, etc.).
+computers.py : Énumérer les ordinateurs, collecter les attributs (dNSHostName, operatingSystem, servicePrincipalName, userAccountControl, msDS-AllowedToDelegateTo, etc.).
+gpos.py : Énumérer les GPO, leurs GUIDs, leurs liens, et les permissions sur leurs objets dans l'AD.
+trusts.py : Énumérer les relations de confiance (direction, quarantaine SID, etc.).
+spns.py : Module spécifiquement dédié à la découverte de tous les SPNs enregistrés dans le domaine, y compris ceux des comptes utilisateurs et ordinateurs.
+Base de Connaissances Détaillée (Serveur) (server/models.py, server/database.py) :
+
+Modèles de données enrichis : Affiner les modèles ADObject ou créer des modèles spécifiques (User, Group, Computer, GPO, Trust) pour stocker les attributs détaillés collectés par les modules d'énumération.
+Normalisation des données : S'assurer que les données sont stockées de manière cohérente et interrogeable.
+Indexation : Ajouter des index à la base de données pour améliorer les performances de recherche et d'analyse.
+Développement des Modules de Détection des Misconfigurations (agent/modules/discovery/) :
+
+Ces modules prendront les données énumérées (ou les interrogeront directement si elles sont stockées localement par l'agent, mais pour la première itération, ils pourraient être exécutés après que les données aient été envoyées au serveur) et identifieront les faiblesses.
+unconstrained_delegation_detector.py : Analyse des objets Computer pour identifier les machines avec userAccountControl ayant le bit TRUSTED_FOR_DELEGATION.
+asrep_roast_target_detector.py : Analyse des objets User pour identifier ceux avec userAccountControl ayant le bit DONT_REQ_PREAUTH.
+writable_gpo_detector.py : Analyse des permissions sur les objets GPO (nécessite d'avoir énuméré les ACLs ou d'y avoir accès) pour trouver celles modifiables par des utilisateurs non privilégiés.
+Amélioration de l'API Serveur et du Client GUI (server/app.py, client/):
+
+Serveur :
+Endpoints pour que le client puisse interroger la base de données d'objets AD (/ad_objects, /ad_objects/users, /ad_objects/computers).
+Endpoints pour que le client puisse interroger les vulnérabilités détectées (/vulnerabilities).
+Client GUI :
+Implémenter la vue "Active Directory Data" avec une arborescence navigable et un panneau de détails pour les objets AD.
+Implémenter la vue "Vulnerabilities" pour afficher les faiblesses détectées, avec filtres et catégorisation.
+Capacité à lancer des modules d'énumération depuis la GUI et à visualiser les résultats qui s'ajoutent à la base de données.
+Enjeux Majeurs et Points de Vigilance :
+
+Permissions : L'agent doit disposer des privilèges nécessaires pour effectuer les requêtes LDAP. Gérer les erreurs en cas de droits insuffisants.
+Volume de Données : L'énumération d'un grand Active Directory peut générer un volume considérable de données. Optimiser les requêtes LDAP (filtres, attributs demandés) et la gestion de la base de données.
+Analyse des ACLs : L'analyse des ACLs est complexe. Commencer par des cas simples (WriteProperty, WriteDACL) avant d'aller vers des chemins d'attaque plus élaborés.
+Performance de la DB : S'assurer que la base de données du serveur peut gérer le volume et la fréquence des écritures et lectures.
+Détection : Même l'énumération peut être détectée. L'agent doit utiliser des requêtes ciblées et minimiser le bruit.
+Technologies à Privilégier :
+
+Agent : ldap3 (pour LDAP), impacket (pour SMB/WMI si utilisé pour énumération).
+Serveur : L'ORM choisi (SQLAlchemy) pour interagir avec les modèles de données.
+Client GUI : Les bibliothèques choisies (PyQt/Kivy) pour afficher les données.
+Livrables Attendus pour Validation :
+
+Les modules users_groups.py, computers.py, gpos.py, trusts.py, spns.py sont implémentés et fonctionnels côté agent.
+Le serveur reçoit et stocke correctement les données énumérées dans des modèles de données structurés.
+Les modules de détection unconstrained_delegation_detector.py, asrep_roast_target_detector.py, writable_gpo_detector.py sont implémentés et signalent les vulnérabilités.
+Le client GUI peut déclencher ces modules d'énumération/détection sur un agent.
+Le client GUI peut afficher la liste des objets AD énumérés et des vulnérabilités détectées.
+Ma demande :
+Cette phase est le moment où le framework commence à être vraiment utile pour la reconnaissance. Avez-vous des questions sur la granularité des modules d'énumération, la normalisation des données dans la base de connaissances, ou la manière dont la détection des misconfigurations interagira avec ces données ?

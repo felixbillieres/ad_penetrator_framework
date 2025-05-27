@@ -1,0 +1,5 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary # Au cas où vous passeriez à PostgreSQL plus tard, sinon facultatif pour SQLite
+# pydantic est une dépendance de fastapi, donc pas besoin de l'ajouter explicitement en général 

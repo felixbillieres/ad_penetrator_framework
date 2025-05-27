@@ -1,0 +1,82 @@
+Prompt : Chaîne Logique de Conception - Étape 3/6 : Conception Détaillée de l'Agent (Furtivité et Modularité)
+Votre rôle : Vous êtes une IA spécialisée en gestion de projet, architecture logicielle, développement de logiciels malveillants (à des fins de sécurité offensive éthique), et sécurité des systèmes d'exploitation Windows. Votre mission est de me guider dans la conception détaillée de l'agent de l'AD Penetrator Framework, en insistant sur les enjeux de furtivité, de modularité et de résilience.
+
+Contexte du Projet :
+Nous développons le "AD Penetrator Framework" avec son architecture C2. Nous avons déjà établi les fondations techniques minimales (Phase 0) et avons commencé la conception de l'interface graphique du client (Phase 2). L'agent est le composant qui s'exécute sur les machines cibles et est donc au cœur de nos capacités de reconnaissance et d'exploitation.
+
+Objectif de cette Étape :
+Concevoir l'architecture de l'agent de manière détaillée, en tenant compte des contraintes de l'environnement cible (Windows, présence d'EDR/AV), des besoins de communication furtive et de la capacité à exécuter dynamiquement des modules variés. L'enjeu principal est de créer un agent robuste, modulaire et difficilement détectable.
+
+Composants à Concevoir / Focus (côté Agent) :
+
+Le Cœur de l'Agent (agent/agent_main.py) :
+
+Boucle Principale Robuste : Implémenter la boucle infinie de l'agent qui gère les étapes : check-in (rapport de statut), get_task (récupération des tâches du serveur), execute_task (exécution du module), submit_results (envoi des résultats).
+Gestion des Erreurs Globales : Mettre en place des try-except de haut niveau pour capturer les erreurs inattendues, les journaliser et éviter les crashs de l'agent.
+Gestion du Jitter et du Sleep : Intégrer un mécanisme de temporisation aléatoire entre les communications C2 pour simuler un comportement normal.
+Modules de Communication (agent/comms/) :
+
+Refonte de http_beacon.py :
+Utilisation de requêtes HTTP/S pour la communication bidirectionnelle.
+Masquage du trafic C2 : utilisation de User-Agents légitimes, headers HTTP réalistes, potentiel encodage/chiffrement des données dans le corps de la requête ou les headers.
+Gestion des proxys (si l'agent détecte un proxy local).
+Introduction de dns_beacon.py (comme alternative furtive) :
+Communication via des requêtes DNS (ex: requêtes TXT ou A/AAAA pour encodage/exfiltration de données).
+Mécanismes d'encodage/décodage de données pour le transit via DNS.
+Gestion de l'asynchronicité (les requêtes DNS peuvent être lentes).
+(Optionnel à ce stade) : Esquisser l'idée de smb_beacon.py (Named Pipes, SMB shares).
+Core de l'Agent - Fonctionnalités Clés (agent/core/) :
+
+module_loader.py :
+Mécanisme de chargement dynamique de modules Python reçus du serveur (ex: stocker dans un répertoire temporaire en mémoire ou sur disque chiffré, puis importlib).
+Gestion de l'isolation des modules pour éviter les conflits de dépendances.
+Signature/Vérification des modules pour garantir leur intégrité.
+task_executor.py :
+Prendre la tâche (Task Pydantic model) et l'exécuter.
+Instancier le module approprié et appeler sa méthode execute().
+Capturer la sortie (stdout/stderr) et les exceptions des modules.
+environment_check.py :
+Détection de l'OS (Windows, version).
+Vérification des privilèges de l'agent (utilisateur, administrateur, SYSTEM).
+Détection rudimentaire d'environnements virtualisés (VMware, VirtualBox) ou d'outils d'analyse (présence de noms de processus, fichiers spécifiques).
+Détection de la connectivité réseau et des serveurs DNS.
+Base de Modules pour l'Agent (agent/modules/) :
+
+base_agent_module.py : Affiner la classe abstraite BaseAgentModule pour définir une interface claire pour tous les modules (ex: name, description, category, required_privileges, execute(self, agent_context, task_parameters)). Le agent_context pourrait inclure les références aux clients LDAP/Impacket.
+ad/ : Implémenter les wrappers pour les interactions avec l'AD via des bibliothèques Python :
+ldap_client.py : Fonctions d'interaction LDAP optimisées pour l'agent (ldap3).
+impacket_wrapper.py : Fonctions critiques d'impacket (ex: SMBClient, WMIClient, Atexec si impacket est intégré).
+wmi_client.py : Fonctions pour les interactions WMI locales.
+utils/ (Agent-side) :
+powershell_exec.py : Fonctions pour exécuter du code PowerShell en mémoire ou via des processus cachés.
+bypasses.py : Contenir des stubs ou des placeurs de fonctions pour les futurs bypass AMSI/UAC/AppLocker.
+Enjeux Majeurs et Points de Vigilance :
+
+Furtivité :
+Mémoire vs. Disque : Privilégier l'exécution en mémoire (fileless) pour l'agent et ses modules. Si un fichier doit être écrit, il doit être chiffré et effacé rapidement.
+Réduction de la taille : Minimiser la taille de l'agent et de ses modules pour faciliter le déploiement et l'exécution en mémoire.
+Evasion AV/EDR : Éviter les signatures connues, utiliser des techniques d'obfuscation de code Python (même si ce sera une phase ultérieure, l'architecture doit le permettre).
+Comportement : Éviter les comportements suspects (trop de requêtes, accès à des chemins sensibles sans raison, utilisation de processus non standards).
+Résilience :
+Gestion des crashs : L'agent doit se rétablir après des erreurs de module sans planter entièrement.
+Perte de connectivité C2 : L'agent doit pouvoir attendre patiemment que le serveur redevienne disponible.
+Persistance (future) : La conception doit permettre l'ajout futur de mécanismes de persistance sans nécessiter un redéploiement complet.
+Gestion des Ressources : L'agent doit être léger et consommer peu de CPU/mémoire pour ne pas attirer l'attention.
+Sécurité C2 : Bien que l'agent soit sur une machine compromise, la communication avec le C2 doit être sécurisée (chiffrement TLS, authentification mutuelle).
+Technologies à Privilégier :
+
+Python : Langage principal.
+requests : Pour les communications HTTP.
+ldap3 : Pour les interactions LDAP.
+impacket : Pour les interactions réseau avancées (SMB, WMI, Kerberos). Nécessitera une intégration soignée et potentiellement une version allégée pour l'agent.
+psutil (pour environment_check.py) : Pour l'information système.
+UUID : Pour la génération d'ID.
+Livrables Attendus pour Validation :
+
+Un agent Python fonctionnel qui se lance et établit une communication C2 stable avec le serveur (check-in/get_task/submit_results).
+L'agent est capable d'exécuter un module simple envoyé dynamiquement par le serveur (ex: un module qui exécute whoami ou hostname via subprocess et renvoie la sortie).
+Implémentation des principes de jitter/sleep.
+Validation de la gestion des erreurs et de la résilience basique de l'agent.
+Un base_agent_module.py bien défini, servant de contrat pour les futurs modules.
+Ma demande :
+Cette étape est fondamentale. La conception de l'agent est un équilibre entre fonctionnalité, furtivité et résilience. Avez-vous des questions sur ces enjeux, des suggestions spécifiques pour l'implémentation de ces composants ou des préoccupations concernant les compromis nécessaires ?

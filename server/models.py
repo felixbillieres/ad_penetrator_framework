@@ -1,4 +1,40 @@
 # models.py
-# DÈfinit les modËles de donnÈes de la base de donnÈes (avec l'ORM).
-# Inclut les modËles pour les agents, les t‚ches, les rÈsultats, et surtout
-# les objets Active Directory dÈcouverts (utilisateurs, groupes, ordinateurs, GPOs, trusts, etc.).
+# D√©finit les mod√®les de donn√©es de la base de donn√©es (avec l'ORM).
+# Inclut les mod√®les pour les agents, les t√¢ches, les r√©sultats, et surtout
+# les objets Active Directory d√©couverts (utilisateurs, groupes, ordinateurs, GPOs, trusts, etc.).
+
+from sqlalchemy import Column, String, DateTime, Enum as SQLAlchemyEnum
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.sql import func
+import enum
+
+Base = declarative_base()
+
+class AgentStatus(str, enum.Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    PENDING = "pending"
+    UNINSTALLED = "uninstalled"
+
+class Agent(Base):
+    __tablename__ = "agents"
+
+    id = Column(String, primary_key=True, index=True) # UUID de l'agent
+    hostname = Column(String, nullable=True)
+    internal_ip = Column(String, nullable=True)
+    username = Column(String, nullable=True)
+    os_target = Column(String, nullable=True)
+    status = Column(SQLAlchemyEnum(AgentStatus), default=AgentStatus.PENDING)
+    first_seen = Column(DateTime(timezone=True), server_default=func.now())
+    last_checkin_time = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    agent_version = Column(String, nullable=True)
+
+    def __repr__(self):
+        return f"<Agent(id='{self.id}', status='{self.status}', last_checkin='{self.last_checkin_time}')>"
+
+# Plus tard, nous ajouterons d'autres mod√®les ici pour :
+# - T√¢ches (Tasks)
+# - R√©sultats des t√¢ches (TaskResults)
+# - Objets AD (ADObjects : utilisateurs, groupes, ordinateurs, GPOs, etc.)
+# - Credentials
+# - Logs d'√©v√©nements
