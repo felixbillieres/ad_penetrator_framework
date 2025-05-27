@@ -19,17 +19,20 @@ Le framework est bâti sur une architecture **Client-Serveur-Agent (C2)**, favor
 +-------------------+       +-------------------+       +--------------------+
      Console CLI                API / Database            Executes Modules
      Playbook Orchestration     Task Management           Collects Data
-     Result Display             Agent Control             Performs Exploits
+     Result Display (Web UI)    Agent Control             Performs Exploits
                                 Stores AD Data            Communicates back
 ```
 
 ### 1. Client (Operator Console)
 
-Le client est l'interface utilisateur que l'opérateur utilise pour interagir avec le framework. C'est votre point de commande principal.
+Le client est l'interface utilisateur que l'opérateur utilise pour interagir avec le framework. Initialement conçu comme une CLI, il a évolué vers une **interface web riche (React)** pour une meilleure visualisation et interaction.
 
-* **Interface interactive (CLI)**: Offre une expérience utilisateur riche pour la navigation, la commande et l'affichage des informations. Il permet de lister les agents actifs, de naviguer dans la base de données des objets AD découverts, de lancer des modules spécifiques sur un agent ou d'exécuter des "playbooks" complexes et automatisés.
-* **Orchestration des Playbooks**: Permet de définir et de déclencher l'exécution de chaînes d'opérations pré-définies (ou personnalisées) sur les agents. Les playbooks peuvent inclure des logiques conditionnelles et des points d'interaction pour l'opérateur.
-* **Visualisation des résultats**: Affiche les informations collectées, les alertes de vulnérabilité et les résultats d'exploitation de manière claire, structurée et personnalisable (verbosité, filtrage).
+*   **Interface Web (React)**: Offre une expérience utilisateur moderne et interactive, accessible via un navigateur web.
+    *   **Tableau de Bord**: Affiche des statistiques clés sur les agents (actifs, inactifs, répartition par OS, domaine, privilèges), un log d'activités récentes et l'état de connexion au serveur C2.
+    *   **Liste des Agents**: Présente un tableau détaillé des agents connectés, avec leurs informations système (OS, IP, utilisateur, domaine, version, etc.) et leur statut.
+    *   **Graphe AD Interactif**: Visualise les données des agents (machines, utilisateurs, domaines) sous forme de graphe interactif (utilisant Cytoscape.js avec le layout 'cose'), permettant d'explorer les relations. Les nœuds peuvent être marqués comme "owned" et leurs détails sont affichés dans un panneau d'information.
+*   **Communication API**: Interagit avec le serveur C2 via son API RESTful pour récupérer les données des agents et afficher les informations.
+*   **(Planifié)** Orchestration des Playbooks et lancement de modules spécifiques.
 
 ### 2. Server (C2 Server)
 
@@ -178,13 +181,14 @@ Naviguez dans les répertoires respectifs (`server`, `client`, `agent`, `tools`)
 ```bash
 # Pour le serveur (dans le dossier `server`)
 python -m venv venv_server
-source venv_server/bin/activate # ou `venv_server\\Scripts\\activate` sur Windows
+source venv_server/bin/activate # ou `venv_server\Scripts\activate` sur Windows
 pip install fastapi uvicorn sqlalchemy pydantic psycopg2-binary # ou `sqlite3` pour la DB
 
-# Pour le client (dans le dossier `client`)
-python -m venv venv_client
-source venv_client/bin/activate
-pip install requests prompt_toolkit pyyaml pydantic
+# Pour le client web (client_web)
+# Le client web est une application statique (HTML, CSS, JavaScript) servie par un simple serveur HTTP.
+# Aucune dépendance Python spécifique n'est requise pour *exécuter* le client web lui-même,
+# mis à part un navigateur web moderne. Les fichiers React sont transpilés à la volée par Babel dans le navigateur.
+# Pour le développement ou le service du client_web, vous pouvez utiliser le module http.server de Python.
 
 # Pour l'agent (dans le dossier `agent`, pour le développement et la compilation)
 python -m venv venv_agent
@@ -242,13 +246,11 @@ source venv_client/bin/activate
 python console.py --c2-url http://<YOUR_C2_IP>:8000
 ```
 
-Une fois connecté, l'interface CLI du client vous permettra :
-
-* De lister les agents connectés et leurs informations.
-* De naviguer et de requêter la base de données des objets Active Directory découverts par les agents.
-* De lancer des modules d'énumération, de découverte ou d'exploitation sur des agents spécifiques.
-* D'exécuter des **playbooks** prédéfinis ou personnalisés, qui peuvent inclure des logiques interactives pour la validation des étapes critiques.
-* De visualiser les résultats détaillés de toutes les opérations en temps réel.
+Une fois l'interface web chargée, vous pourrez :
+*   Consulter le **Tableau de Bord** pour un aperçu global.
+*   Naviguer vers la vue **Agents** pour voir la liste des agents et leurs détails. Les données sont récupérées depuis le serveur C2.
+*   Explorer le **Graphe AD** pour visualiser les relations entre les machines, utilisateurs et domaines basés sur les informations des agents.
+*   (Les fonctionnalités d'interaction avancées comme le lancement de tâches ou l'exploitation sont en cours de développement.)
 
 ## Contribution
 

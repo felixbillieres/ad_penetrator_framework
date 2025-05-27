@@ -19,7 +19,9 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Fonction pour créer les tables dans la base de données
 def create_db_and_tables():
+    print("DATABASE: Tentative de création des tables...")
     Base.metadata.create_all(bind=engine)
+    print("DATABASE: create_all() exécuté.")
 
 # Dépendance pour obtenir une session de base de données par requête
 def get_db():

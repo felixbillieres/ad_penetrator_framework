@@ -17,14 +17,21 @@ from . import models, database # Nouvelle importation relative
 from .models import AgentStatus # Nouvelle importation relative
 
 # Créer les tables dans la base de données au démarrage (si elles n'existent pas)
-database.create_db_and_tables()
+# database.create_db_and_tables() # SUPPRIMÉ: L'appel global est supprimé
+
+# NOUVEAU: Fonction pour l'événement de démarrage
+async def startup_event():
+    print("APP: Événement de démarrage FastAPI déclenché.")
+    database.create_db_and_tables()
+    print("APP: create_db_and_tables appelée depuis l'événement de démarrage.")
 
 app = FastAPI(
     title="AD Penetrator Framework - C2 Server",
     description="API pour le serveur C2 du AD Penetrator Framework. Accédez à /docs ou /redoc pour la documentation interactive de l'API.",
     version="0.1.0",
     docs_url="/docs", # URL explicite pour Swagger UI
-    redoc_url="/redoc"  # URL explicite pour ReDoc
+    redoc_url="/redoc",  # URL explicite pour ReDoc
+    on_startup=[startup_event] # AJOUTÉ: Enregistrement de l'événement de démarrage
 )
 
 # Configuration CORS
@@ -86,6 +93,15 @@ class AgentCheckInRequest(BaseModel):
     username: Optional[str] = Field(None, description="Utilisateur sous lequel l'agent s'exécute")
     os_target: Optional[str] = Field(None, description="OS de la machine agent")
     agent_version: Optional[str] = Field(None, description="Version du binaire de l'agent")
+    
+    # Nouveaux champs pour informations système détaillées
+    architecture: Optional[str] = Field(None, description="Architecture de la machine (ex: x86_64)")
+    processor: Optional[str] = Field(None, description="Informations sur le processeur")
+    current_user: Optional[str] = Field(None, description="Utilisateur actuellement connecté qui exécute l'agent")
+    domain_name: Optional[str] = Field(None, description="Nom de domaine AD (si joint)")
+    local_users: Optional[List[str]] = Field(None, description="Liste des utilisateurs locaux découverts")
+    local_admins: Optional[List[str]] = Field(None, description="Liste des membres du groupe Administrateurs local")
+    current_user_privileges: Optional[str] = Field(None, description="Privilèges de l'utilisateur de l'agent (Admin/User)")
 
 class AgentResponse(BaseModel):
     id: str
@@ -97,6 +113,15 @@ class AgentResponse(BaseModel):
     first_seen: datetime.datetime
     last_checkin_time: Optional[datetime.datetime] = None
     agent_version: Optional[str] = None
+
+    # Nouveaux champs correspondants pour la réponse
+    architecture: Optional[str] = None
+    processor: Optional[str] = None
+    current_user: Optional[str] = None
+    domain_name: Optional[str] = None
+    local_users: Optional[List[str]] = None
+    local_admins: Optional[List[str]] = None
+    current_user_privileges: Optional[str] = None
 
     class Config:
         # orm_mode = True # Ancien nom pour Pydantic V1
@@ -115,21 +140,37 @@ def agent_checkin(agent_data: AgentCheckInRequest, db: Session = Depends(databas
         db_agent.status = AgentStatus.ACTIVE
         if agent_data.hostname: db_agent.hostname = agent_data.hostname
         if agent_data.internal_ip: db_agent.internal_ip = agent_data.internal_ip
-        if agent_data.username: db_agent.username = agent_data.username
         if agent_data.os_target: db_agent.os_target = agent_data.os_target
         if agent_data.agent_version: db_agent.agent_version = agent_data.agent_version
+
+        # Mise à jour des nouveaux champs
+        if agent_data.architecture: db_agent.architecture = agent_data.architecture
+        if agent_data.processor: db_agent.processor = agent_data.processor
+        if agent_data.current_user: db_agent.username = agent_data.current_user
+        if agent_data.domain_name: db_agent.domain_name = agent_data.domain_name
+        if agent_data.local_users is not None: db_agent.local_users = agent_data.local_users
+        if agent_data.local_admins is not None: db_agent.local_admins = agent_data.local_admins
+        if agent_data.current_user_privileges: db_agent.current_user_privileges = agent_data.current_user_privileges
     else:
         # Nouvel agent
         db_agent = models.Agent(
             id=agent_data.agent_id,
             hostname=agent_data.hostname,
             internal_ip=agent_data.internal_ip,
-            username=agent_data.username,
+            username=agent_data.current_user,
             os_target=agent_data.os_target,
             agent_version=agent_data.agent_version,
             status=AgentStatus.ACTIVE,
             first_seen=current_time,
-            last_checkin_time=current_time
+            last_checkin_time=current_time,
+            
+            # Nouveaux champs
+            architecture=agent_data.architecture,
+            processor=agent_data.processor,
+            domain_name=agent_data.domain_name,
+            local_users=agent_data.local_users,
+            local_admins=agent_data.local_admins,
+            current_user_privileges=agent_data.current_user_privileges
         )
         db.add(db_agent)
     

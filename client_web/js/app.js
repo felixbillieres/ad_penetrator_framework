@@ -24,7 +24,9 @@ const App = () => {
     }, [C2_SERVER_URL]); // Ajout de C2_SERVER_URL aux dépendances de useCallback
     
     React.useEffect(() => {
-        if (activeView === 'agents' || activeView === 'dashboard') {
+        // Charger les agents si la vue active est 'agents', 'dashboard', ou 'graph'
+        // Car le graphe a aussi besoin des données agents.
+        if (activeView === 'agents' || activeView === 'dashboard' || activeView === 'graph') {
             fetchAgents();
         }
     }, [activeView, fetchAgents]); // fetchAgents ajouté aux dépendances
@@ -38,7 +40,8 @@ const App = () => {
             currentViewComponent = React.createElement(AgentsListView, { agents: agents, error: loadingError, onRefresh: fetchAgents });
             break;
         case 'graph':
-            currentViewComponent = React.createElement(AdGraphView, null);
+            // Passer les agents au AdGraphView
+            currentViewComponent = React.createElement(AdGraphView, { agents: agents, error: loadingError });
             break;
         default:
             currentViewComponent = React.createElement('div', null, 'Vue non trouvée');

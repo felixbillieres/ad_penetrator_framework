@@ -1,67 +1,107 @@
 // import React, { useState, useEffect } from 'react'; // Supprimé
 
-const GraphInfoPanel = ({ node, onFindPath, allNodes }) => {
+const GraphInfoPanel = ({ node, onFindPath, allNodes, toggleNodeOwned, ownedNodeIds }) => {
     if (!node) {
         return (
             React.createElement('div', {id: "info-panel"},
                 React.createElement('h2', null, "Explorateur de Graphe AD"),
-                React.createElement('p', null, "Cliquez sur un nœud (personne, ordinateur, groupe) ou une relation (flèche) pour afficher ses détails ici."),
+                React.createElement('p', null, "Cliquez sur un nœud (machine, utilisateur, domaine) ou une relation pour afficher ses détails."),
                 React.createElement('p', null, "Zoomez/Dézoomez avec la molette. Déplacez le graphe en cliquant et glissant sur le fond."),
-                React.createElement('p', null, React.createElement('strong', null, "Les données du graphe sont actuellement FFICTIVES et servent de démonstration.")),
-                React.createElement('p', null, "Les actions listées ci-dessous sont des simulations et n'ont pas d'effet réel.")
+                React.createElement('p', null, "Utilisez les données des agents récupérées pour construire le graphe.")
             )
         );
     }
-    // Utilisation de React.useState pour targetNodeForPath au lieu de useState direct
+
     const [targetNodeForPath, setTargetNodeForPath] = React.useState(""); 
+    const nodeData = node.raw_data || node;
+    const nodeId = node.id; // ID Cytoscape
+    const nodeType = node.type;
 
-    const computerNodesForSelect = allNodes ? allNodes.filter(n => n.data && n.data.type === 'Computer').map(n => n.data) : [];
-    const userNodes = allNodes ? allNodes.filter(n => n.data && n.data.type === 'User' && n.data.id !== node.id).map(n => n.data) : [];
-    const groupNodes = allNodes ? allNodes.filter(n => n.data && n.data.type === 'Group' && n.data.id !== node.id).map(n => n.data) : [];
+    const computerNodesForSelect = allNodes ? allNodes.filter(n => n.type === 'Machine' && n.id !== nodeId) : [];
 
-    let relatedInfo = [];
+    let displayProperties = {};
+    let title = node.label || nodeId;
+    let subtitle = nodeType;
+    let isOwnable = false; // Seuls certains types de noeuds peuvent être "owned"
+
+    if (nodeType === 'Machine' && nodeData) {
+        isOwnable = true;
+        title = nodeData.hostname || node.label;
+        subtitle = `Machine (Agent ID: ${nodeData.id ? nodeData.id.substring(0,8) : 'N/A'}... )`;
+        displayProperties = {
+            "ID Agent": nodeData.id,
+            "Hostname": nodeData.hostname,
+            "IP Interne": nodeData.internal_ip,
+            "Utilisateur Actuel": nodeData.current_user,
+            "Privilèges Utilisateur": nodeData.current_user_privileges,
+            "OS Cible": nodeData.os_target,
+            "Version Agent": nodeData.agent_version,
+            "Architecture": nodeData.architecture,
+            "Processeur": nodeData.processor,
+            "Nom de Domaine": nodeData.domain_name,
+            "Utilisateurs Locaux": nodeData.local_users ? nodeData.local_users.join(', ') : 'N/A',
+            "Admins Locaux": nodeData.local_admins ? nodeData.local_admins.join(', ') : 'N/A',
+            "Premier Contact": nodeData.first_seen ? new Date(nodeData.first_seen).toLocaleString() : 'N/A',
+            "Dernier Check-in": nodeData.last_checkin_time ? new Date(nodeData.last_checkin_time).toLocaleString() : 'N/A',
+        };
+    } else if ((nodeType === 'DomainUser' || nodeType === 'LocalUser') && nodeData) {
+        isOwnable = true;
+        title = nodeData.username || node.label;
+        subtitle = nodeType === 'DomainUser' ? `Utilisateur de Domaine (${nodeData.domain || 'N/A'})` : `Utilisateur (${nodeData.on_machine || 'Contexte local' })`;
+        displayProperties = {
+            "Nom d'utilisateur": nodeData.username,
+            "Type d'utilisateur": nodeData.type, // 'DomainUser' ou 'LocalUser'
+            "Domaine": nodeData.domain || 'N/A (Local au contexte machine)',
+            "Contexte Machine": nodeData.on_machine || 'N/A',
+            "Privilèges (si agent)": nodeData.privileges || 'N/A',
+        };
+    } else if (nodeType === 'LocalUserOnMachine' && nodeData) {
+        isOwnable = true; // On peut marquer un compte local spécifique comme owned
+        title = nodeData.username || node.label;
+        subtitle = `Compte Local sur ${nodeData.on_machine_hostname}`;
+        displayProperties = {
+            "Nom d'utilisateur": nodeData.username,
+            "Sur Machine": nodeData.on_machine_hostname,
+            "Est Admin Local": nodeData.is_local_admin ? 'Oui' : 'Non',
+        };
+    } else if (nodeType === 'Domain' && nodeData) {
+        isOwnable = true; // On peut marquer un domaine comme compromis
+        title = nodeData.name || node.label;
+        subtitle = 'Domaine Active Directory';
+        displayProperties = { "Nom de Domaine": nodeData.name };
+    } else if (nodeType === 'Relation' && nodeData) {
+        title = nodeData.label || 'Relation';
+        subtitle = `De: ${nodeData.sourceNode?.label || nodeData.source} \nVers: ${nodeData.targetNode?.label || nodeData.target}`;
+        displayProperties = {
+            "Type": nodeData.label || 'Inconnu',
+            "Source ID": nodeData.source,
+            "Cible ID": nodeData.target,
+            "Source Label": nodeData.sourceNode?.label,
+            "Cible Label": nodeData.targetNode?.label,
+        };
+    }
+
+    const handleOwnedChange = (e) => {
+        if (nodeId && toggleNodeOwned) {
+            toggleNodeOwned(nodeId);
+        }
+    };
+
     let exploitActions = [];
-
-    if (node.type === 'User') {
-        relatedInfo.push({label: "SID", value: node.properties?.sid || 'N/A'});
-        relatedInfo.push({label: "Admin Count", value: node.properties?.adminCount?.toString() || 'false'});
-        exploitActions.push({ label: `Kerberoast ${node.label}`, action: () => alert(`[Fictif] Tentative de Kerberoasting sur ${node.label}...`) });
-        if (node.properties?.adminCount) {
-            exploitActions.push({ label: `DCSync (via ${node.label})`, category: 'Exploitation', action: () => alert(`[Fictif] Tentative de DCSync en utilisant les droits de ${node.label}...`) });
-        }
-        exploitActions.push({ label: `Pass-the-Ticket (depuis ${node.label})`, category: 'Mouvement Latéral', action: () => alert(`[Fictif] Tentative de Pass-the-Ticket avec un ticket de ${node.label}...`) });
-        // Assurer que computerNodes existe et est un tableau avant forEach
-        const computerNodes = allNodes ? allNodes.filter(n => n.data && n.data.type === 'Computer' && n.data.id !== node.id).map(n => n.data) : [];
-        computerNodes.forEach(cn => {
-            exploitActions.push({ label: `Chemin d'Exploit vers ${cn.label}`, category: 'Pathfinding', action: () => onFindPath(cn.id), type: 'path' });
-        });
-        exploitActions.push({ label: `Vérifier Shadow Credentials pour ${node.label}`, category: 'Persistance', action: () => alert(`[Fictif] Recherche de Shadow Credentials sur ${node.label}...`) });
-    } else if (node.type === 'Computer') {
-        relatedInfo.push({label: "Operating System", value: node.properties?.operatingSystem || 'N/A'});
-        relatedInfo.push({label: "DNS HostName", value: node.properties?.dnsHostName || 'N/A'});
-        exploitActions.push({ label: `Scanner ports sur ${node.label}`, category: 'Reconnaissance', action: () => alert(`[Fictif] Scan des ports sur ${node.label}...`) });
-        if (node.properties?.isDC) {
-            exploitActions.push({ label: `Scan Vulns DC (${node.label})`, category: 'Reconnaissance', action: () => alert(`[Fictif] Scan de vulnérabilités (ZeroLogon, PrintNightmare...) sur DC ${node.label}...`) });
-            exploitActions.push({ label: `Récupérer NTDS.dit de ${node.label}`, category: 'Credential Access', action: () => alert(`[Fictif] Tentative de récupération de NTDS.dit depuis ${node.label} (via secretsdump ou vshadow)...`) });
-        }
-        userNodes.forEach(un => {
-            exploitActions.push({ label: `Énumérer sessions de ${un.label} sur ${node.label}`, category: 'Reconnaissance', action: () => alert(`[Fictif] Énumération des sessions de ${un.label} sur ${node.label}...`) });
-        });
-        exploitActions.push({ label: `Exécuter commande via WMI sur ${node.label}`, category: 'Exécution', action: () => alert(`[Fictif] Tentative d'exécution de commande via WMI sur ${node.label}...`) });
-    } else if (node.type === 'Group') {
-        relatedInfo.push({label: "Scope", value: node.properties?.scope || 'N/A'});
-        exploitActions.push({ label: `Énumérer membres de ${node.label}`, category: 'Reconnaissance', action: () => alert(`[Fictif] Énumération des membres du groupe ${node.label}...`) });
-        exploitActions.push({ label: `Ajouter utilisateur à ${node.label} (si droits)`, category: 'Persistance', action: () => alert(`[Fictif] Tentative d'ajout d'un utilisateur au groupe ${node.label}...`) });
-    } else if (node.type === 'Relation') {
-        relatedInfo.push({label: "Type de Relation", value: node.properties?.type || node.label});
-        relatedInfo.push({label: "Source", value: node.source});
-        relatedInfo.push({label: "Cible", value: node.target});
-        if (node.label === 'AdminTo'){
-            exploitActions.push({ label: `Abuser de ${node.label} vers ${node.targetNode?.label || node.target}`, category: 'Exploitation', action: () => alert(`[Fictif] Tentative d'abus de la relation AdminTo de ${node.sourceNode?.label || node.source} vers ${node.targetNode?.label || node.target}...`) });
+    if (nodeType === 'DomainUser' || nodeType === 'LocalUser' || nodeType === 'LocalUserOnMachine') {
+        exploitActions.push({ label: `Kerberoast ${title}`, category: 'Exploitation', action: () => alert(`[Fictif] Kerberoasting sur ${title}`) });
+        if (nodeData && nodeData.privileges === 'Admin') {
+             exploitActions.push({ label: `DCSync (via ${title})`, category: 'Exploitation', action: () => alert(`[Fictif] Tentative de DCSync en utilisant les droits de ${title}...`) });
         }
     }
-    
-    // Regrouper les actions par catégorie pour un meilleur affichage
+    if (nodeType === 'Machine') {
+        exploitActions.push({ label: `Scanner ports sur ${title}`, category: 'Reconnaissance', action: () => alert(`[Fictif] Scan des ports sur ${title}`) });
+        if (nodeData && (nodeData.os_target?.toLowerCase().includes('server') || nodeData.hostname?.toLowerCase().includes('dc'))) {
+             exploitActions.push({ label: `Scan Vulns DC/Serveur (${title})`, category: 'Reconnaissance', action: () => alert(`[Fictif] Scan de vulnérabilités spécifiques aux serveurs sur ${title}...`) });
+        }
+         exploitActions.push({ label: `Récupérer NTDS.dit de ${title} (si DC)`, category: 'Credential Access', action: () => alert(`[Fictif] Tentative de récupération de NTDS.dit depuis ${title}...`) });
+    }
+
     const categorizedActions = exploitActions.reduce((acc, action) => {
         const category = action.category || 'Général';
         if (!acc[category]) acc[category] = [];
@@ -71,30 +111,38 @@ const GraphInfoPanel = ({ node, onFindPath, allNodes }) => {
 
     return (
         React.createElement('div', {id: "info-panel"},
-            React.createElement('h2', null, node.label || node.id, React.createElement('span', {className: "node-type-badge"}, node.type)),
+            React.createElement('h2', null, title, 
+                React.createElement('span', {className: "node-type-badge", style: { marginLeft: '10px'}}, subtitle)
+            ),
             
-            node.properties && Object.keys(node.properties).length > 0 && (
+            isOwnable && toggleNodeOwned && ownedNodeIds && React.createElement('div', { style: { margin: '10px 0', padding: '8px', backgroundColor:'#333', borderRadius:'4px'} },
+                React.createElement('label', {
+                    htmlFor: `owned-checkbox-${nodeId}`,
+                    style: { cursor: 'pointer', display: 'flex', alignItems: 'center'}
+                },
+                    React.createElement('input', {
+                        type: 'checkbox',
+                        id: `owned-checkbox-${nodeId}`,
+                        checked: ownedNodeIds.has(nodeId),
+                        onChange: handleOwnedChange,
+                        style: { marginRight: '8px', transform: 'scale(1.2)' }
+                    }),
+                    React.createElement('span', {style:{fontWeight: ownedNodeIds.has(nodeId) ? 'bold' : 'normal', color: ownedNodeIds.has(nodeId) ? '#ff4d4d' : 'inherit'}}, "Marquer comme 'Owned'")
+                )
+            ),
+
+            Object.keys(displayProperties).length > 0 && (
                 React.createElement(React.Fragment, null,
-                    React.createElement('h3', {className: "info-panel-subtitle"}, "Propriétés de l'élément:"),
+                    React.createElement('h3', {className: "info-panel-subtitle"}, "Détails de l'élément:"),
                     React.createElement('table', {className: "node-details-table"},
                         React.createElement('tbody', null,
-                            Object.entries(node.properties).map(([key, value]) => (
-                                React.createElement('tr', {key: key},
-                                    React.createElement('th', null, key.replace(/([A-Z_])/g, ' $1').replace(/^./, str => str.toUpperCase())),
-                                    React.createElement('td', null, typeof value === 'boolean' ? value.toString() : Array.isArray(value) ? value.join(', ') : String(value))
+                            Object.entries(displayProperties).map(([key, value]) => (
+                                (value !== undefined && value !== null && String(value).trim() !== '') && React.createElement('tr', {key: key},
+                                    React.createElement('th', null, key),
+                                    React.createElement('td', null, String(value))
                                 )
                             ))
                         )
-                    )
-                )
-            ),
-            relatedInfo.length > 0 && (
-                 React.createElement(React.Fragment, null,
-                    React.createElement('h3', {className: "info-panel-subtitle"}, "Informations Clés:"),
-                    React.createElement('ul', {className: "related-info-list"},
-                        relatedInfo.map((info, index) => (
-                            React.createElement('li', {key: index}, React.createElement('strong', null, info.label, ":"), " ", info.value)
-                        ))
                     )
                 )
             ),
@@ -113,7 +161,7 @@ const GraphInfoPanel = ({ node, onFindPath, allNodes }) => {
                                         title: actionItem.label,
                                         className: `exploit-button ${actionItem.type === 'path' ? 'path-finding' : ''}`
                                     },
-                                    actionItem.label.length > 40 ? actionItem.label.substring(0,37)+"...": actionItem.label
+                                    actionItem.label.length > 40 ? actionItem.label.substring(0,37)+"..." : actionItem.label
                                     )
                                 ))
                             )
@@ -121,24 +169,25 @@ const GraphInfoPanel = ({ node, onFindPath, allNodes }) => {
                     ))
                  )
             ),
-            !Object.keys(categorizedActions).length && React.createElement('p', null, "Aucune action spécifique pour cet élément."),
             
-            /* Ajout du sélecteur de cible pour pathfinding ici si le noeud sélectionné est un utilisateur */
-            node.type === 'User' && React.createElement('div', { className: 'pathfinding-controls', style: { marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #555'} },
-                React.createElement('h5', null, "Recherche de chemin d'exploitation"),
-                React.createElement('label', { htmlFor: 'target-node-select-gip' }, "Cible (ordinateur): "),
+            (nodeType === 'DomainUser' || nodeType === 'LocalUser' || nodeType === 'Machine' || nodeType === 'LocalUserOnMachine') && computerNodesForSelect.length > 0 && 
+            React.createElement('div', { className: 'pathfinding-controls', style: { marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #555'} },
+                React.createElement('h4', {style:{color: '#61dafb'}}, "Recherche de Chemin d'Exploitation"),
+                React.createElement('p', {style:{fontSize: '0.9em', marginBottom: '10px'}}, `Depuis ${title} (type: ${nodeType}) vers un ordinateur cible :`),
+                React.createElement('label', { htmlFor: 'target-node-select-gip', style:{marginRight: '5px'} }, "Cible: "),
                 React.createElement('select', { 
                     id: 'target-node-select-gip',
                     value: targetNodeForPath, 
                     onChange: e => setTargetNodeForPath(e.target.value), 
-                    style: { marginRight: '10px' }
+                    style: { marginRight: '10px', padding: '5px', backgroundColor: '#333', color:'white', border:'1px solid #555' }
                 },
                     React.createElement('option', { value: "" }, "-- Choisir un ordinateur --"),
-                    computerNodesForSelect.map(cn => React.createElement('option', { key: cn.id, value: cn.id }, cn.label))
+                    computerNodesForSelect.map(cn => React.createElement('option', { key: cn.id, value: cn.id }, cn.label || cn.id))
                 ),
                 React.createElement('button', { 
-                    onClick: () => onFindPath(targetNodeForPath), 
-                    disabled: !targetNodeForPath 
+                    onClick: () => { if(targetNodeForPath) onFindPath(targetNodeForPath); else alert("Veuillez choisir une cible."); }, 
+                    disabled: !targetNodeForPath, 
+                    style: {padding: '5px 10px'}
                 }, "Trouver Chemin")
             )
         )

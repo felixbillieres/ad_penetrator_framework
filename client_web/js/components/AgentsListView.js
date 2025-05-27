@@ -75,10 +75,13 @@ const AgentsListView = ({ agents, error, onRefresh }) => {
                             React.createElement('th', null, "ID Agent"),
                             React.createElement('th', null, "Hostname"),
                             React.createElement('th', null, "IP Interne"),
-                            React.createElement('th', null, "Utilisateur"),
+                            React.createElement('th', null, "Utilisateur Actuel"),
+                            React.createElement('th', null, "Privilèges"),
+                            React.createElement('th', null, "Domaine"),
                             React.createElement('th', null, "Premier Contact"),
                             React.createElement('th', null, "Dernier Check-in"),
-                            React.createElement('th', null, "Version Agent")
+                            React.createElement('th', null, "Version Agent"),
+                            React.createElement('th', null, "Admins Locaux")
                         )
                     ),
                     React.createElement('tbody', null,
@@ -89,10 +92,13 @@ const AgentsListView = ({ agents, error, onRefresh }) => {
                                 React.createElement('td', { title: agent.id }, agent.id.length > 15 ? agent.id.substring(0,12) + '...' : agent.id),
                                 React.createElement('td', null, agent.hostname || 'N/A'),
                                 React.createElement('td', null, agent.internal_ip || 'N/A'),
-                                React.createElement('td', null, agent.username || 'N/A'),
+                                React.createElement('td', null, agent.current_user || agent.username || 'N/A'),
+                                React.createElement('td', { title: agent.current_user_privileges }, agent.current_user_privileges ? (agent.current_user_privileges === 'Admin' ? '👑 Admin' : '👤 Utilisateur') : 'N/A'),
+                                React.createElement('td', null, agent.domain_name || 'N/A (Workgroup)'),
                                 React.createElement('td', null, formatDate(agent.first_seen)),
                                 React.createElement('td', { className: new Date() - new Date(agent.last_checkin_time) > 60000 * 5 ? 'last-checkin-late' : '' }, formatDate(agent.last_checkin_time)),
-                                React.createElement('td', null, agent.agent_version || 'N/A')
+                                React.createElement('td', null, agent.agent_version || 'N/A'),
+                                React.createElement('td', { title: agent.local_admins && agent.local_admins.join(', ') }, agent.local_admins ? `${agent.local_admins.length} admin(s)` : 'N/A')
                             )
                         ))
                     )
